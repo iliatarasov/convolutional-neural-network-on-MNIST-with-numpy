@@ -7,20 +7,32 @@ class Convolutional:
     def __init__(self, n_kernels, kernel_size):
         self.n_kernels = n_kernels
         self.kernel_size = kernel_size
-        self.kernel = np.random.randn(n_kernels, 
-                                      kernel_size, 
-                                      kernel_size) / kernel_size ** 2
+        self.kernel = np.random.randn(
+            n_kernels,
+            kernel_size,
+            kernel_size,
+            
+            ) / kernel_size ** 2
 
     def forward(self, image):
         h, w = image.shape[:2]
+        if len(image.shape) == 3:
+            _, _, n_channels = image.shape
+        else:
+            n_channels = 0
         out = np.zeros((
             h - self.kernel_size + 1,
             w - self.kernel_size + 1,
             self.n_kernels
         ))
-        for slice, i, j in conv_slices(image, self.kernel_size):
-            out[i, j] = np.sum(slice * self.kernel,
-                               axis = (1, 2))
+        if n_channels:
+            for slice, i, j in conv_slices(image, self.kernel_size):
+                for channel in range(n_channels):
+                    out[i, j] += np.sum(slice[:,:,channel] * self.kernel,
+                                    axis=(1, 2))
+        else:
+            for slice, i, j in conv_slices(image, self.kernel_size):
+                out[i, j] = np.sum(slice * self.kernel, axis=(1, 2))
         return ReLU(out)
     
     def backward(self, out_grad):
