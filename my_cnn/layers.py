@@ -1,6 +1,6 @@
 import numpy as np
 
-from .functional import ReLU, ReLU_grad
+from .functional import ReLU, ReLU_grad, conv_slices, pooling_slices
 
 
 class Convolutional:
@@ -10,15 +10,6 @@ class Convolutional:
         self.kernel = np.random.randn(n_kernels, 
                                       kernel_size, 
                                       kernel_size) / kernel_size ** 2
-        
-    def slices(self, image):
-        h, w = image.shape[:2]
-        self.image = image
-        for i in range(h - self.kernel_size + 1):
-            for j in range(w - self.kernel_size + 1):
-                image_slice = image[i : (i + self.kernel_size),
-                                      j : (j + self.kernel_size)]
-                yield image_slice, i, j
 
     def forward(self, image):
         h, w = image.shape[:2]
@@ -27,7 +18,7 @@ class Convolutional:
             w - self.kernel_size + 1,
             self.n_kernels
         ))
-        for slice, i, j in self.slices(image):
+        for slice, i, j in conv_slices(image, self.kernel_size):
             out[i, j] = np.sum(slice * self.kernel,
                                axis = (1, 2))
         return ReLU(out)
@@ -48,18 +39,6 @@ class MaxPooling:
     def __init__(self, kernel_size):
         self.kernel_size = kernel_size
 
-    def slices(self, image):
-        h = image.shape[0] // self.kernel_size
-        w = image.shape[1] // self.kernel_size
-        self.image = image
-        for i in range(h):
-            for j in range(w):
-                slice = image[
-                    i * self.kernel_size : (i + 1) * self.kernel_size,
-                    j * self.kernel_size : (j + 1) * self.kernel_size
-                ]
-                yield slice, i, j
-
     def forward(self, image):
         h, w, n_kernels = image.shape
         out = np.zeros((
@@ -67,7 +46,7 @@ class MaxPooling:
             w // self.kernel_size,
             n_kernels
         ))
-        for slice, i, j in self.slices(image):
+        for slice, i, j in pooling_slices(image, self.kernel_size):
             out[i, j] = np.amax(slice, axis=(0, 1))
         return out
     
