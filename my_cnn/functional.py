@@ -7,7 +7,7 @@ def ReLU(x):
 
 def ReLU_grad(output_grad, output):
     '''Relu activation function gradient'''
-    return output_grad * (output > 0).astype(float)
+    return output_grad * (output > 0).astype(np.float16)
 
 def conv_slices(image, kernel_size):
     '''A generator that yields image slices for convolution'''

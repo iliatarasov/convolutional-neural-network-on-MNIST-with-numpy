@@ -4,7 +4,13 @@ from .functional import ReLU, ReLU_grad, conv_slices, pooling_slices
 
 
 class Convolutional:
+    '''Convolutional layer with an arbitraty number of square kernels'''
     def __init__(self, n_kernels, kernel_size):
+        '''
+        Arguments:
+            n_kernels (int): number of kernels
+            kernel_size (int): kernel side length
+        '''
         self.params = {
             'n kernels': n_kernels,
             'kernel size': kernel_size
@@ -14,50 +20,46 @@ class Convolutional:
         self.kernel = np.random.randn(
             n_kernels,
             kernel_size,
-            kernel_size,
-            ) / kernel_size ** 2
+            kernel_size).astype(np.float32) / kernel_size ** 2
         
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 
     def forward(self, image):
+        '''Forward pass'''
         self.image = image
         h, w = image.shape[:2]
-        if len(image.shape) == 3:
-            _, _, self.n_channels = image.shape
-        else:
-            self.n_channels = 0
         out = np.zeros((
             h - self.kernel_size + 1,
             w - self.kernel_size + 1,
             self.n_kernels
-        ))
-        if self.n_channels:
-            for slice, i, j in conv_slices(image, self.kernel_size):
-                for channel in range(self.n_channels):
-                    out[i, j] += np.sum(slice[:,:,channel] * self.kernel,
-                                    axis=(1, 2))
-        else:
-            for slice, i, j in conv_slices(image, self.kernel_size):
-                out[i, j] = np.sum(slice * self.kernel, axis=(1, 2))
+        ), dtype=np.float32)
+        for slice, i, j in conv_slices(image, self.kernel_size):
+            out[i, j] = np.sum(slice * self.kernel, axis=(1, 2))
         self.activation_value = ReLU(out)
         return self.activation_value
     
-    def backward(self, out_grad):
-        activation_grad = ReLU_grad(out_grad, self.activation_value)
+    def backward(self, output_grad):
+        '''Backpropagation'''
+        activation_grad = ReLU_grad(output_grad, self.activation_value)
         self.grad = np.zeros(self.kernel.shape)
         for slice, i, j in conv_slices(self.image, self.kernel_size):
             for k in range(self.n_kernels):
-                for m in range(self.n_channels):
-                    self.grad[k] += slice[:,:,m] * activation_grad[i, j, k]
+                self.grad[k] += slice * activation_grad[i, j, k]
         return self.grad
 
     def step(self, learning_rate=1e-3):
+        '''Learning rate application'''
         self.kernel -= learning_rate * self.grad
 
 
 class MaxPooling:
+    '''Max pooling layer with a square kernel'''
     def __init__(self, kernel_size):
+        '''
+        Arguments:
+            kernel_size (int): kernel side length
+        '''
         self.kernel_size = kernel_size
         self.params = {
             'kernel size': kernel_size,
@@ -67,19 +69,21 @@ class MaxPooling:
         return self.forward(*args, **kwargs)
 
     def forward(self, image):
+        '''Forward pass'''
         self.image = image
         h, w, n_kernels = image.shape
         out = np.zeros((
             h // self.kernel_size,
             w // self.kernel_size,
             n_kernels
-        ))
+        ), dtype=np.float32)
         for slice, i, j in pooling_slices(image, self.kernel_size):
             out[i, j] = np.amax(slice, axis=(0, 1))
         return out
     
-    def backward(self, out_grad):
-        self.grad = np.zeros(self.image.shape)
+    def backward(self, output_grad):
+        '''Backpropagation'''
+        self.grad = np.zeros(self.image.shape, dtype=np.float32)
         for slice, i, j in pooling_slices(self.image, 
                                           self.kernel_size):
             h, w, n_kernels = slice.shape
@@ -93,35 +97,44 @@ class MaxPooling:
                                 i * self.kernel_size + il,
                                 j * self.kernel_size + jl,
                                 kl
-                            ] = out_grad[i, j, kl]
+                            ] = output_grad[i, j, kl]
         return self.grad
     
     def step(self, learning_rate):
-        pass
+        '''Null statement to preserve generality in network architecture'''
+        pass 
 
 
 class Linear:
+    '''Linear layer with softmax activation'''
     def __init__(self, input_size, output_size):
+        '''
+        Arguments:
+            input_size (int): size of input
+            output_size (int): size of output
+        '''
         self.params = {
             'input size': input_size,
             'output size': output_size,
         }
         self.weights = np.random.randn(
             input_size, output_size
-        ) / np.sqrt(input_size)
-        self.biases = np.zeros(output_size)
+        ).astype(np.float32) / input_size
+        self.biases = np.zeros(output_size, dtype=np.float32) / input_size
 
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 
     def forward(self, image):
+        '''Forward pass'''
         self.original_shape = image.shape
         self.image = image.flatten()
         self.out = np.dot(self.image, self.weights) + self.biases
         return np.exp(self.out) / np.sum(np.exp(self.out), axis=0)
     
-    def backward(self, out_grad):
-        for i, grad in enumerate(out_grad):
+    def backward(self, output_grad):
+        '''Backpropagation'''
+        for i, grad in enumerate(output_grad):
             if grad:
                 exp = np.exp(self.out)
                 S_total = np.sum(exp)
@@ -142,5 +155,6 @@ class Linear:
         return self.grad.reshape(self.original_shape)
     
     def step(self, learning_rate=1e-3):
+        '''Learning rate application'''
         self.weights -= learning_rate * self.dL_dw
         self.biases -= learning_rate * self.dL_db
