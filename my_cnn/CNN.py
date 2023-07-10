@@ -15,7 +15,7 @@ class Classifier:
         'pool': MaxPooling,
         'lin': Linear,
     }
-    def __init__(self, architecture, params, n_classes, input_size):
+    def __init__(self, architecture, layer_params, n_classes, input_size):
         '''
         Arguments:
             architecture (str or list[str]): sequence of layer names.
@@ -36,7 +36,7 @@ class Classifier:
         self.n_classes = n_classes
         if isinstance(architecture, str):
             architecture = architecture.split()
-        assert len(architecture) == len(params), 'Architecture and parameters length do not match'
+        assert len(architecture) == len(layer_params), 'Architecture and parameters length do not match'
         self.layers = []
         for i, layer_type in enumerate(architecture):
             if layer_type == 'lin':
@@ -44,8 +44,8 @@ class Classifier:
                 # forward pass with an empty matrix
                 assert self.layers, 'Linear layer can not be first'
                 dummy = functools.reduce(lambda x, y: y(x), self.layers, np.zeros(input_size))
-                params[i] = (np.product(dummy.shape), params[i])                    
-            self.layers.append(self.LAYERS[layer_type](*params[i]))
+                layer_params[i] = (np.product(dummy.shape), layer_params[i])                    
+            self.layers.append(self.LAYERS[layer_type](*layer_params[i]))
 
     def forward(self, image):
         '''Forward pass'''
@@ -103,10 +103,10 @@ class Classifier:
         for layer in self.layers:
             layer.step(learning_rate)
 
-    def predict(self, image):
+    def predict(self, images):
         assert self.trained, 'The network was never trained'
-        prediction = self.forward(image)
-        return prediction.argmax()                
+        y_pred = [self.forward(image).argmax() for image in images]
+        return y_pred
 
     def show_parameters(self):
         '''Prints a description of the network'''
