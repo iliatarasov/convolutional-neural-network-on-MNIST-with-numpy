@@ -9,13 +9,14 @@ from .layers import Convolutional, MaxPooling, Linear
 
 
 class Classifier:
-    '''CNN classifier with convolutional, pooling and linear layers'''
+    '''CNN multiclass classifier with convolutional, pooling and linear layers'''
     LAYERS = {
         'conv': Convolutional,
         'pool': MaxPooling,
         'lin': Linear,
     }
-    def __init__(self, architecture, layer_params, n_classes, input_size):
+    def __init__(self, architecture: str|list, layer_params: list[tuple[int]], 
+                 n_classes: int, input_size: int) -> None:
         '''
         Arguments:
             architecture (str or list[str]): sequence of layer names.
@@ -36,29 +37,37 @@ class Classifier:
         self.n_classes = n_classes
         if isinstance(architecture, str):
             architecture = architecture.split()
-        assert len(architecture) == len(layer_params), 'Architecture and parameters length do not match'
+        assert len(architecture) == len(layer_params), 'Architecture and parameters mismatch'
         self.layers = []
         for i, layer_type in enumerate(architecture):
             if layer_type == 'lin':
                 #This gets input size for a linear layer by doing a 
-                # forward pass with an empty matrix
+                # quick forward pass with an empty matrix
                 assert self.layers, 'Linear layer can not be first'
                 dummy = functools.reduce(lambda x, y: y(x), self.layers, np.zeros(input_size))
                 layer_params[i] = (np.product(dummy.shape), layer_params[i])                    
             self.layers.append(self.LAYERS[layer_type](*layer_params[i]))
 
-    def forward(self, image):
+    def forward(self, image: np.ndarray) -> np.ndarray:
         '''Forward pass'''
         layers = [layer.forward for layer in self.layers]
         return functools.reduce(lambda x, y: y(x), layers, image)
 
-    def backward(self, output_grad):
+    def backward(self, output_grad: np.ndarray) -> None:
         '''Backpropagation'''
         layers = [layer.backward for layer in self.layers[::-1]]
-        return functools.reduce(lambda x, y: y(x), layers, output_grad)
+        functools.reduce(lambda x, y: y(x), layers, output_grad)
 
-    def fit(self, X_train, y_train, learning_rate=1e-3, n_epochs=20):
-        '''Training routine'''
+    def fit(self, X_train: np.ndarray, y_train: np.ndarray, 
+            learning_rate: float=1e-3, n_epochs: int=10) -> None:
+        '''
+        Training routine
+        Arguments:
+            X_train (list or np.ndarray): array of images
+            y_train (list or np.ndarray): array of labels
+            learning_rate (float): learning rate
+            n_epochs (int): number of training epochs
+        '''
         train_size = len(X_train)
 
         self.metrics = defaultdict(list)
@@ -98,24 +107,25 @@ class Classifier:
         self.trained = True
 
 
-    def step(self, learning_rate=1e-3):
+    def step(self, learning_rate: float=1e-3) -> None:
         '''Learning rate application'''
         for layer in self.layers:
             layer.step(learning_rate)
 
-    def predict(self, images):
+    def predict(self, images: np.ndarray) -> list:
+        '''Makes a prediction on train data'''
         assert self.trained, 'The network was never trained'
         y_pred = [self.forward(image).argmax() for image in images]
         return y_pred
 
-    def show_parameters(self):
+    def show_parameters(self) -> None:
         '''Prints a description of the network'''
         for i, layer in enumerate(self.layers, start=1):
             print(f'Layer {i}: {layer.__class__.__name__}:')
             for param_name, param_value in layer.params.items():
                 print(f'\t{param_name}: {param_value}')
 
-    def save(self, path):
+    def save(self, path: str) -> None:
         '''Saves the model as pickle'''
         if not self.trained:
             warnings.warn('Saving an untrained model')
@@ -123,3 +133,4 @@ class Classifier:
             path += '.pkl'
         with open(path, 'wb') as file:
             pickle.dump(self, file)
+

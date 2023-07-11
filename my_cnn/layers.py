@@ -4,8 +4,11 @@ from .functional import ReLU, ReLU_grad, conv_slices, pooling_slices
 
 
 class Convolutional:
-    '''Convolutional layer with an arbitraty number of square kernels'''
-    def __init__(self, n_kernels, kernel_size):
+    '''
+    Convolutional layer with an arbitraty number of square kernels,
+    no padding and stride 1
+    '''
+    def __init__(self, n_kernels: int, kernel_size: int) -> None:
         '''
         Arguments:
             n_kernels (int): number of kernels
@@ -25,7 +28,7 @@ class Convolutional:
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 
-    def forward(self, image):
+    def forward(self, image: np.ndarray) -> np.ndarray:
         '''Forward pass'''
         self.image = image
         h, w = image.shape[:2]
@@ -39,7 +42,7 @@ class Convolutional:
         self.activation_value = ReLU(out)
         return self.activation_value
     
-    def backward(self, output_grad):
+    def backward(self, output_grad: np.ndarray) -> np.ndarray:
         '''Backpropagation'''
         activation_grad = ReLU_grad(output_grad, self.activation_value)
         self.grad = np.zeros(self.kernel.shape)
@@ -48,14 +51,14 @@ class Convolutional:
                 self.grad[k] += slice * activation_grad[i, j, k]
         return self.grad
 
-    def step(self, learning_rate=1e-3):
+    def step(self, learning_rate: float=1e-3) -> None:
         '''Learning rate application'''
         self.kernel -= learning_rate * self.grad
 
 
 class MaxPooling:
-    '''Max pooling layer with a square kernel'''
-    def __init__(self, kernel_size):
+    '''Max pooling layer with a square kernel, no padding and stride 1'''
+    def __init__(self, kernel_size: int) -> None:
         '''
         Arguments:
             kernel_size (int): kernel side length
@@ -68,7 +71,7 @@ class MaxPooling:
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 
-    def forward(self, image):
+    def forward(self, image: np.ndarray) -> np.ndarray:
         '''Forward pass'''
         self.image = image
         h, w, n_kernels = image.shape
@@ -81,7 +84,7 @@ class MaxPooling:
             out[i, j] = np.amax(slice, axis=(0, 1))
         return out
     
-    def backward(self, output_grad):
+    def backward(self, output_grad: np.ndarray) -> np.ndarray:
         '''Backpropagation'''
         self.grad = np.zeros(self.image.shape, dtype=np.float32)
         for slice, i, j in pooling_slices(self.image, 
@@ -107,7 +110,7 @@ class MaxPooling:
 
 class Linear:
     '''Linear layer with softmax activation'''
-    def __init__(self, input_size, output_size):
+    def __init__(self, input_size: int, output_size: int) -> None:
         '''
         Arguments:
             input_size (int): size of input
@@ -125,14 +128,14 @@ class Linear:
     def __call__(self, *args, **kwargs):
         return self.forward(*args, **kwargs)
 
-    def forward(self, image):
+    def forward(self, image: np.ndarray) -> np.ndarray:
         '''Forward pass'''
         self.original_shape = image.shape
         self.image = image.flatten()
         self.out = np.dot(self.image, self.weights) + self.biases
         return np.exp(self.out) / np.sum(np.exp(self.out), axis=0)
     
-    def backward(self, output_grad):
+    def backward(self, output_grad: np.ndarray) -> np.ndarray:
         '''Backpropagation'''
         for i, grad in enumerate(output_grad):
             if grad:
@@ -154,7 +157,7 @@ class Linear:
 
         return self.grad.reshape(self.original_shape)
     
-    def step(self, learning_rate=1e-3):
+    def step(self, learning_rate: float=1e-3):
         '''Learning rate application'''
         self.weights -= learning_rate * self.dL_dw
         self.biases -= learning_rate * self.dL_db
