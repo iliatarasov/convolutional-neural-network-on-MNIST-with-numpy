@@ -9,7 +9,8 @@ def ReLU_grad(output_grad: np.ndarray, output: np.ndarray) -> np.ndarray:
     '''Relu activation function gradient'''
     return output_grad * (output > 0).astype(np.float32)
 
-def conv_slices(image: np.ndarray, kernel_size: int) -> tuple[np.ndarray, int, int]:
+def conv_slices(image: np.ndarray, 
+                kernel_size: int) -> tuple[np.ndarray, int, int]:
     '''A generator that yields image slices for convolution'''
     height, width = image.shape[:2]
     for i in range(height - kernel_size + 1):
@@ -19,7 +20,8 @@ def conv_slices(image: np.ndarray, kernel_size: int) -> tuple[np.ndarray, int, i
                 j:(j + kernel_size)]
             yield slice, i, j    
 
-def pooling_slices(image: np.ndarray, kernel_size: int) -> tuple[np.ndarray, int, int]:
+def pooling_slices(image: np.ndarray, 
+                   kernel_size: int) -> tuple[np.ndarray, int, int]:
     '''A generator that yields image slices for pooling'''
     h = image.shape[0] // kernel_size
     w = image.shape[1] // kernel_size
