@@ -1,8 +1,8 @@
 import functools
 import pickle
 import warnings
-import numpy as np
 from collections import defaultdict
+import numpy as np
 from sklearn.metrics import balanced_accuracy_score, accuracy_score, recall_score, precision_score
 
 from .layers import Convolutional, MaxPooling, Linear
@@ -15,7 +15,7 @@ class Classifier:
         'pool': MaxPooling,
         'lin': Linear,
     }
-    def __init__(self, architecture: str|list, layer_params: list[tuple[int]], 
+    def __init__(self, architecture: str|list[str], layer_params: list[tuple[int]], 
                  n_classes: int, input_size: int) -> None:
         '''
         Arguments:
@@ -26,9 +26,11 @@ class Classifier:
             
             params (list[tuple[int]]): list of parameters per layer. Expected inputs
             per layer type:
-                conv (tuple): (number of kernels, kernel size)
-                pool (tuple): (kernel size)
-                lin  (tuple): (output size)
+                conv (tuple[int]): (number of kernels, kernel size)
+                pool (tuple[int]): (kernel size)
+                lin  (tuple[int]): (output size) OR 
+                              (input size, output size) if this layer is the first
+                              layer of the network
 
             n_classes (int): number of classes in data
             input_size (tuple[int] or like): size of input
@@ -43,9 +45,11 @@ class Classifier:
             if layer_type == 'lin':
                 #This gets input size for a linear layer by doing a 
                 # quick forward pass with an empty matrix
-                assert self.layers, 'Linear layer can not be first'
-                dummy = functools.reduce(lambda x, y: y(x), self.layers, np.zeros(input_size))
-                layer_params[i] = (np.product(dummy.shape), layer_params[i])                    
+                if not self.layers: 
+                    assert len(layer_params[i]) == 2, 'Input size must be explicitly specified if the first layer of the network is linear'
+                else:
+                    dummy = functools.reduce(lambda x, y: y(x), self.layers, np.zeros(input_size))
+                    layer_params[i] = (np.product(dummy.shape), layer_params[i])                    
             self.layers.append(self.LAYERS[layer_type](*layer_params[i]))
 
     def forward(self, image: np.ndarray) -> np.ndarray:
@@ -73,13 +77,13 @@ class Classifier:
         self.metrics = defaultdict(list)
 
         for epoch in range(1, n_epochs + 1):
-            print(f'Epoch {epoch}/{n_epochs}')
             y_pred = []
             running_loss = []
 
             for sample in range(train_size):
                 mean_loss = np.mean(running_loss) if running_loss else 0
-                print(f'Sample {sample}/{train_size}, loss {mean_loss:.5f}', end='\r')
+                print(f'Epoch {epoch}/{n_epochs}, sample {sample}/{train_size}, loss {mean_loss:.5f}',
+                      end='\r')
                 image = X_train[sample]
 
                 label = np.array(y_train[sample])
@@ -101,7 +105,7 @@ class Classifier:
             self.metrics['recall'].append(recall_score(y_train, y_pred, average='micro'))
             self.metrics['precision'].append(precision_score(y_train, y_pred, average='micro'))
             self.metrics['loss'].append(np.mean(running_loss))
-            print(f'Epoch {epoch}\tloss: {np.mean(running_loss):.3f}\t',\
+            print(f'Loss: {np.mean(running_loss):.3f}\t',\
                     f'balanced accuracy on train: {balanced_accuracy_score(y_train, y_pred):.3f}')
             
         self.trained = True
