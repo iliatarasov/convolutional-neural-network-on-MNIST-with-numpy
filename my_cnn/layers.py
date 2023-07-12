@@ -103,7 +103,7 @@ class MaxPooling:
                             ] = output_grad[i, j, kl]
         return self.grad
     
-    def step(self, learning_rate):
+    def step(self, learning_rate: any) -> None:
         '''Null statement to preserve generality in network architecture'''
         pass 
 
@@ -132,7 +132,7 @@ class Linear:
         '''Forward pass'''
         self.original_shape = image.shape
         self.image = image.flatten()
-        self.out = np.dot(self.image, self.weights) + self.biases
+        self.out = self.image.dot(self.weights) + self.biases
         return np.exp(self.out) / np.sum(np.exp(self.out), axis=0)
     
     def backward(self, output_grad: np.ndarray) -> np.ndarray:
