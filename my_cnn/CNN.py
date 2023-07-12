@@ -3,19 +3,23 @@ import pickle
 import warnings
 from collections import defaultdict
 import numpy as np
-from sklearn.metrics import balanced_accuracy_score, accuracy_score, recall_score, precision_score
+from sklearn.metrics import balanced_accuracy_score, accuracy_score, \
+    recall_score, precision_score
 
 from .layers import Convolutional, MaxPooling, Linear
 
 
 class Classifier:
-    '''CNN multiclass classifier with convolutional, pooling and linear layers'''
+    '''
+    CNN multiclass classifier with convolutional, pooling and linear layers
+    '''
     LAYERS = {
         'conv': Convolutional,
         'pool': MaxPooling,
         'lin': Linear,
     }
-    def __init__(self, architecture: str|list[str], layer_params: list[tuple[int]], 
+    def __init__(self, architecture: str|list[str], 
+                 layer_params: list[tuple[int]], 
                  n_classes: int, input_size: int) -> None:
         '''
         Arguments:
@@ -24,13 +28,13 @@ class Classifier:
                 if str: layer names with spaces in between
                 if list: layer names (str) in list
             
-            params (list[tuple[int]]): list of parameters per layer. Expected inputs
-            per layer type:
+            params (list[tuple[int]]): list of parameters per layer. Expected 
+            inputs per layer type:
                 conv (tuple[int]): (number of kernels, kernel size)
                 pool (tuple[int]): (kernel size)
                 lin  (tuple[int]): (output size) OR 
-                              (input size, output size) if this layer is the first
-                              layer of the network
+                              (input size, output size) if this layer is the 
+                              first layer of the network
 
             n_classes (int): number of classes in data
             input_size (tuple[int] or like): size of input
@@ -39,17 +43,22 @@ class Classifier:
         self.n_classes = n_classes
         if isinstance(architecture, str):
             architecture = architecture.split()
-        assert len(architecture) == len(layer_params), 'Architecture and parameters mismatch'
+        assert len(architecture) == len(layer_params), \
+            'Architecture and parameters mismatch'
         self.layers = []
         for i, layer_type in enumerate(architecture):
             if layer_type == 'lin':
                 #This gets input size for a linear layer by doing a 
                 # quick forward pass with an empty matrix
                 if not self.layers: 
-                    assert len(layer_params[i]) == 2, 'Input size must be explicitly specified if the first layer of the network is linear'
+                    assert len(layer_params[i]) == 2, \
+                    'Input size must be explicitly specified if the first \
+                          layer of the network is linear'
                 else:
-                    dummy = functools.reduce(lambda x, y: y(x), self.layers, np.zeros(input_size))
-                    layer_params[i] = (np.product(dummy.shape), layer_params[i])                    
+                    dummy = functools.reduce(lambda x, y: y(x), 
+                                             self.layers, np.zeros(input_size))
+                    layer_params[i] = (np.product(dummy.shape), 
+                                       layer_params[i])                    
             self.layers.append(self.LAYERS[layer_type](*layer_params[i]))
 
     def forward(self, image: np.ndarray) -> np.ndarray:
@@ -82,7 +91,8 @@ class Classifier:
 
             for sample in range(train_size):
                 mean_loss = np.mean(running_loss) if running_loss else 0
-                print(f'Epoch {epoch}/{n_epochs}, sample {sample}/{train_size}, loss {mean_loss:.5f}',
+                print(f'Epoch {epoch}/{n_epochs},',\
+                      f'sample {sample}/{train_size}, loss {mean_loss:.5f}',
                       end='\r')
                 image = X_train[sample]
 
@@ -101,12 +111,16 @@ class Classifier:
             print()
 
             self.metrics['accuracy'].append(accuracy_score(y_train, y_pred))
-            self.metrics['balanced accuracy'].append(balanced_accuracy_score(y_train, y_pred))
-            self.metrics['recall'].append(recall_score(y_train, y_pred, average='micro'))
-            self.metrics['precision'].append(precision_score(y_train, y_pred, average='micro'))
+            self.metrics['balanced accuracy'].\
+                append(balanced_accuracy_score(y_train, y_pred))
+            self.metrics['recall'].\
+                append(recall_score(y_train, y_pred, average='micro'))
+            self.metrics['precision'].\
+                append(precision_score(y_train, y_pred, average='micro'))
             self.metrics['loss'].append(np.mean(running_loss))
-            print(f'Loss: {np.mean(running_loss):.3f}\t',\
-                    f'balanced accuracy on train: {balanced_accuracy_score(y_train, y_pred):.3f}')
+            print(f'Loss: {np.mean(running_loss):.3f}\t',
+                'balanced accuracy on train:',
+                f'{balanced_accuracy_score(y_train, y_pred):.3f}')
             
         self.trained = True
 
