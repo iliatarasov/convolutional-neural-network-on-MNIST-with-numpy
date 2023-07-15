@@ -1,4 +1,4 @@
-This project aims to build a convolutional neural network for multiclass image classification from scratch using numpy. Broadly, this is an extension of my [previous project]([https://github.com/Shmuley322/multilayer-perceptron-on-MNIST](https://github.com/iliatarasov/multilayer-perceptron-on-MNIST-with-numpy) and consequently I tried  making up for the general shortcomings of my previous neural net in addition to moving up from MLP to CNN. 
+This project aims to build a convolutional neural network for multiclass image classification from scratch using numpy. Broadly, this is an extension of my [previous project](https://github.com/iliatarasov/multilayer-perceptron-on-MNIST-with-numpy) and consequently I tried  making up for the general shortcomings of my previous neural net in addition to moving up from MLP to CNN. 
 
 Outline:
 - I first describe the network
